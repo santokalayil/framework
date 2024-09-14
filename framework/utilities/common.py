@@ -1,6 +1,7 @@
+import inspect
 from pathlib import Path
-from types import ModuleType
-from typing import Dict
+from types import ModuleType, FunctionType
+from typing import Dict, Any
 
 from ..exceptions import PathNotFound, NotRelativePath, ModuleFileTypeNotSupported
 
@@ -39,3 +40,26 @@ def get_variables(module: ModuleType, load_hiddenvars: bool = False) -> Dict:
     else:
         needed_vars = [i for i in dir(module) if not(i.startswith("__") or i.endswith("__"))]
     return {k: v for k, v in vars(module).items() if k in needed_vars}
+
+
+def execute_function(fn: FunctionType, preset_kwargs: Dict[str, Any] = None, validate_params=True) -> Any:
+    # figuring out input params
+    fn_sign = inspect.signature(fn)
+    fn_params = fn_sign.parameters
+    # fn_return_type = fn_sign.return_annotation
+    if not preset_kwargs:
+        preset_kwargs = {}
+    if validate_params:
+        # checking all parameters valid?
+        invalid_params = []
+        for param_name in fn_params.keys():
+            if param_name not in preset_kwargs.keys():
+                invalid_params.append(param_name)
+        if invalid_params:
+            raise Exception("Invalid parameters found")
+
+        # constructing kwargs
+        kwargs = {param: preset_kwargs[param] for param in fn_params.keys()}
+        return fn.__call__(**kwargs)
+    else:
+        return fn.__call__(**preset_kwargs)
